@@ -1,0 +1,24 @@
+{
+  "tests": [
+    {
+      "name": "All required tests pass",
+      "setup": "sudo add-apt-repository ppa:deadsnakes/ppa ; sudo apt install python3.12 ; sudo -H pip3 install poetry ; poetry install; poetry add pytest",
+      "run": "poetry run pytest .",
+      "input": "",
+      "output": "",
+      "comparison": "included",
+      "timeout": 5,
+      "points": 0
+    },
+    {
+      "name": "CI exists",
+      "setup": "sudo add-apt-repository ppa:deadsnakes/ppa ; sudo apt install python3.12 ; sudo -H pip3 install poetry ; poetry install; poetry add pytest",
+      "run": "poetry run pytest ./tests/sqr-tests/test_poetryci.py::test_ci",
+      "input": "",
+      "output": "",
+      "comparison": "included",
+      "timeout": 5,
+      "points": 1
+    }
+  ]
+}

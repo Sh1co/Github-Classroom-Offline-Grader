@@ -2,7 +2,7 @@ import argparse
 import subprocess
 import os
 import json
-import shlex
+import shutil
 import csv
 
 
@@ -60,10 +60,13 @@ def run_test(test_dict):
     return test_dict["points"]
 
 
-def get_user_from_repo(repo_name):
-    split_name = repo_name.split("-")
-    name = split_name[len(split_name) - 1]
-    return name
+def print_after_nth_dash(input_string, n):
+    parts = input_string.split('-')
+    if len(parts) > n:
+        result = '-'.join(parts[n:])
+        return result
+    else:
+        return input_string
 
 
 def save_grades_to_csv(grades, filename="grades.csv"):
@@ -75,13 +78,30 @@ def save_grades_to_csv(grades, filename="grades.csv"):
         for student_username, grade in grades.items():
             writer.writerow({"student_username": student_username, "grade": grade})
 
+def copy_template_to_repo(template_path, repo_path):
+    if not os.path.exists(template_path):
+        print("Template folder does not exist.")
+        return
+
+    for item in os.listdir(template_path):
+        source = os.path.join(template_path, item)
+        destination = os.path.join(repo_path, item)
+        if os.path.isdir(source):
+            shutil.copytree(source, destination, dirs_exist_ok=True)
+        else:
+            shutil.copy2(source, destination)
+
 
 def main(assignment_number, tests):
     new_folder = "cloned_repos"
+    template_folder = "template"
     os.makedirs(new_folder, exist_ok=True)
 
     clone_command = f"gh classroom clone student-repos -a {assignment_number}"
+    print("Cloning repos")
     run_command(clone_command, cwd=new_folder)
+    print("Done cloning repos")
+    
 
     try:
         first_repo_folder = next(
@@ -98,12 +118,17 @@ def main(assignment_number, tests):
     for repo in os.listdir(first_repo_folder):
         repo_path = os.path.join(first_repo_folder, repo)
         if os.path.isdir(repo_path):
-            student_name = get_user_from_repo(repo)
+            # TODO add it as an argument
+            # Update this depending on the assignment name
+            student_name = print_after_nth_dash(repo, 1)
             print(f"Grading {student_name}")
+            # TODO add it as an argument
+            copy_template_to_repo(template_folder, repo_path)
             os.chdir(repo_path)
 
             total_grade = 0
 
+            # TODO add it as an argument
             # Uncomment to use the test present in the repo
             # tests = read_tests_from_json_file(".github/classroom/autograding.json")
             for test in tests:
