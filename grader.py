@@ -113,7 +113,7 @@ def main(assignment_number, tests):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Clone GitHub Classroom repositories, update with template, commit changes, and push."
+        description="Clone GitHub Classroom repositories, run set of tests on them, caluclate grade for each student, save to csv."
     )
     parser.add_argument(
         "assignment_number", type=str, help="The assignment number for GitHub Classroom"
