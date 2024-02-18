@@ -54,6 +54,16 @@ def run_test(test_dict):
 
     # Return 0 points if the test fails or times out
     return 0
+
+def get_user_from_repo(repo_name):
+    split_name = repo_name.split('-')
+    name = split_name[len(split_name)-1]
+    return name
+
+def main(assignment_number, tests):
+    # Uncomment to use the test present in the repo
+    # tests = read_tests_from_json_file(".github/classroom/autograding.json")
+
     new_folder = "cloned_repos"
     os.makedirs(new_folder, exist_ok=True)
 
@@ -70,20 +80,23 @@ def run_test(test_dict):
         print("No directories found in the cloned repositories folder.")
         return
 
+    grades = {}
+
     for repo in os.listdir(first_repo_folder):
         repo_path = os.path.join(first_repo_folder, repo)
         if os.path.isdir(repo_path):
-            print(f"Grading {repo}")
+            student_name  = get_user_from_repo(repo)
+            print(f"Grading {student_name}")
             os.chdir(repo_path)
-            # TODO add grading code
             
             total_grade = 0
 
             for test in tests:
                 total_grade += run_test(test)
 
+            grades[student_name] = total_grade
 
-            print(f"Done grading {repo}")
+            print(f"Done grading {student_name}")
             os.chdir("../../..")
 
 
