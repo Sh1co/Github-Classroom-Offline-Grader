@@ -32,39 +32,32 @@ def read_tests_from_json_file(file_path):
 
 def run_test(test_dict):
     # Execute the setup command
-    setup_command = test_dict["setup"]
-    try:
-        subprocess.run(
-            shlex.split(setup_command),
-            timeout=test_dict["timeout"],
-            check=True,
-            shell=True,
-        )
-    except subprocess.TimeoutExpired:
-        print("Setup command timed out.")
-        return 0
-    except subprocess.CalledProcessError:
-        print("Setup command failed.")
-        return 0
+    setup_commands = test_dict["setup"].split(';')
+    for command in setup_commands:
+        try:
+            subprocess.run(command, check=True, shell=True)
+        except subprocess.TimeoutExpired:
+            print("A setup command timed out.")
+            return 0
+        except subprocess.CalledProcessError:
+            print("A setup command failed.")
+            return 0
+
 
     # Execute the test command
-    test_command = test_dict["run"]
-    try:
-        subprocess.run(
-            shlex.split(test_command),
-            timeout=test_dict["timeout"],
-            check=True,
-            shell=True,
-        )
-        # If the test command passes without exceptions, return the number of points
-        return test_dict["points"]
-    except subprocess.TimeoutExpired:
-        print("Test command timed out.")
-    except subprocess.CalledProcessError:
-        print("Test command failed.")
-
-    # Return 0 points if the test fails or times out
-    return 0
+    test_commands = test_dict["run"].split(';')
+    for command in test_commands:
+        try:
+            subprocess.run(command, timeout=test_dict["timeout"], check=True, shell=True)
+        except subprocess.TimeoutExpired:
+            print("A test command timed out.")
+            return 0
+        except subprocess.CalledProcessError:
+            print("A test command failed.")
+            return 0
+    
+    # If all test commands pass without exceptions, return the number of points
+    return test_dict["points"]
 
 
 def get_user_from_repo(repo_name):
