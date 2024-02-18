@@ -1,7 +1,9 @@
 import argparse
 import subprocess
 import os
-import shutil
+import json
+import shlex
+import csv
 
 
 def run_command(command, cwd=None, capture_output=False):
@@ -20,6 +22,11 @@ def run_command(command, cwd=None, capture_output=False):
         print(f"An error occurred: {e}")
         return None
 
+def read_tests_from_json_file(file_path):
+    with open(file_path, 'r') as file:
+        data = json.load(file)
+        tests = data.get('tests', [])
+    return tests
 
 def main(assignment_number):
     new_folder = "cloned_repos"
@@ -59,5 +66,8 @@ if __name__ == "__main__":
         "assignment_number", type=str, help="The assignment number for GitHub Classroom"
     )
 
+    
+    tests = read_tests_from_json_file("autograding.json")
+    
     args = parser.parse_args()
     main(args.assignment_number)
