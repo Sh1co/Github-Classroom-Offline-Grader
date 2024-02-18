@@ -60,6 +60,15 @@ def get_user_from_repo(repo_name):
     name = split_name[len(split_name)-1]
     return name
 
+def save_grades_to_csv(grades, filename="grades.csv"):
+    with open(filename, 'w', newline='') as csvfile:
+        fieldnames = ['student_username', 'grade']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+        writer.writeheader()
+        for student_username, grade in grades.items():
+            writer.writerow({'student_username': student_username, 'grade': grade})
+
 def main(assignment_number, tests):
     # Uncomment to use the test present in the repo
     # tests = read_tests_from_json_file(".github/classroom/autograding.json")
@@ -98,6 +107,8 @@ def main(assignment_number, tests):
 
             print(f"Done grading {student_name}")
             os.chdir("../../..")
+    
+    save_grades_to_csv(grades, "output_grades.csv")
 
 
 if __name__ == "__main__":
