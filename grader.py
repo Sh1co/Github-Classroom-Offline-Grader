@@ -32,7 +32,7 @@ def read_tests_from_json_file(file_path):
 
 def run_test(test_dict):
     # Execute the setup command
-    setup_commands = test_dict["setup"].split(';')
+    setup_commands = test_dict["setup"].split(";")
     for command in setup_commands:
         try:
             subprocess.run(command, check=True, shell=True)
@@ -43,27 +43,28 @@ def run_test(test_dict):
             print("A setup command failed.")
             return 0
 
-
     # Execute the test command
-    test_commands = test_dict["run"].split(';')
+    test_commands = test_dict["run"].split(";")
     for command in test_commands:
         try:
-            subprocess.run(command, timeout=test_dict["timeout"], check=True, shell=True)
+            subprocess.run(
+                command, timeout=test_dict["timeout"], check=True, shell=True
+            )
         except subprocess.TimeoutExpired:
             print("A test command timed out.")
             return 0
         except subprocess.CalledProcessError:
             print("A test command failed.")
             return 0
-    
+
     # If all test commands pass without exceptions, return the number of points
     return test_dict["points"]
 
 
 def print_after_nth_dash(input_string, n):
-    parts = input_string.split('-')
+    parts = input_string.split("-")
     if len(parts) > n:
-        result = '-'.join(parts[n:])
+        result = "-".join(parts[n:])
         return result
     else:
         return input_string
@@ -77,6 +78,7 @@ def save_grades_to_csv(grades, filename="grades.csv"):
         writer.writeheader()
         for student_username, grade in grades.items():
             writer.writerow({"student_username": student_username, "grade": grade})
+
 
 def copy_template_to_repo(template_path, repo_path):
     if not os.path.exists(template_path):
@@ -92,6 +94,39 @@ def copy_template_to_repo(template_path, repo_path):
             shutil.copy2(source, destination)
 
 
+def get_workflows(owner, repo):
+    """Fetch all workflows for a given repository using GitHub CLI."""
+    cmd = f"gh workflow list -R {owner}/{repo} --json name,id"
+    output = run_command(cmd, capture_output=True)
+    return json.loads(output)
+
+
+def get_latest_workflow_run_status(owner, repo, workflow_id):
+    """Fetch the most recent run status for a given workflow using GitHub CLI."""
+    cmd = f"gh run list -R {owner}/{repo} --workflow={workflow_id} --limit=1 --json conclusion"
+    output = run_command(cmd, capture_output=True)
+    runs = json.loads(output)
+    if runs:
+        return runs[0]["conclusion"]
+    return "no_runs"
+
+
+def check_workflows_passing(owner, repo):
+    workflows = get_workflows(owner, repo)
+    all_passing = True
+
+    for workflow in workflows:
+        status = get_latest_workflow_run_status(owner, repo, workflow["id"])
+        print(f"Workflow '{workflow['name']}' latest run status: {status}")
+        if status != "success":
+            all_passing = False
+
+    if all_passing:
+        return True
+    else:
+        return False
+
+
 def main(assignment_number, tests):
     new_folder = "cloned_repos"
     template_folder = "template"
@@ -99,9 +134,8 @@ def main(assignment_number, tests):
 
     clone_command = f"gh classroom clone student-repos -a {assignment_number}"
     print("Cloning repos")
-    run_command(clone_command, cwd=new_folder)
+    #run_command(clone_command, cwd=new_folder)
     print("Done cloning repos")
-    
 
     try:
         first_repo_folder = next(
@@ -134,6 +168,13 @@ def main(assignment_number, tests):
             for test in tests:
                 total_grade += run_test(test)
 
+            # TODO add it as an argument
+            if total_grade != 0:
+                workflow_passing = check_workflows_passing("QualityInUse", repo)
+                if not workflow_passing:
+                    total_grade = 0
+
+            # TODO add automated feedback
             grades[student_name] = total_grade
 
             print(f"Done grading {student_name}")
