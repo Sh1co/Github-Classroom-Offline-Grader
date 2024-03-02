@@ -29,7 +29,7 @@ def read_tests_from_json_file(file_path):
         tests = data.get("tests", [])
     return tests
 
-
+# TODO update what to include in the test feedback
 def run_test(test_dict):
     # Execute the setup command
     setup_commands = test_dict["setup"].split(";")
@@ -38,10 +38,10 @@ def run_test(test_dict):
             subprocess.run(command, check=True, shell=True)
         except subprocess.TimeoutExpired:
             print("A setup command timed out.")
-            return 0
+            return 0, ""
         except subprocess.CalledProcessError:
             print("A setup command failed.")
-            return 0
+            return 0, f"Failed setup for test {test_dict["name"]}."
 
     # Execute the test command
     test_commands = test_dict["run"].split(";")
@@ -52,13 +52,13 @@ def run_test(test_dict):
             )
         except subprocess.TimeoutExpired:
             print("A test command timed out.")
-            return 0
+            return 0, f"Test {test_dict["name"]} timed out."
         except subprocess.CalledProcessError:
             print("A test command failed.")
-            return 0
+            return 0, f"Test {test_dict["name"]} failed."
 
     # If all test commands pass without exceptions, return the number of points
-    return test_dict["points"]
+    return test_dict["points"], ""
 
 
 def print_after_nth_dash(input_string, n):
@@ -70,14 +70,14 @@ def print_after_nth_dash(input_string, n):
         return input_string
 
 
-def save_grades_to_csv(grades, filename="grades.csv"):
+def save_grades_to_csv(grades, feedbacks, filename="grades.csv"):
     with open(filename, "w", newline="") as csvfile:
-        fieldnames = ["student_username", "grade"]
+        fieldnames = ["student_username", "grade", "feedback"]
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
 
         writer.writeheader()
         for student_username, grade in grades.items():
-            writer.writerow({"student_username": student_username, "grade": grade})
+            writer.writerow({"student_username": student_username, "grade": grade, "feedback": feedbacks[student_username]})
 
 
 def copy_template_to_repo(template_path, repo_path):
@@ -134,7 +134,7 @@ def main(assignment_number, tests):
 
     clone_command = f"gh classroom clone student-repos -a {assignment_number}"
     print("Cloning repos")
-    #run_command(clone_command, cwd=new_folder)
+    run_command(clone_command, cwd=new_folder)
     print("Done cloning repos")
 
     try:
@@ -148,39 +148,51 @@ def main(assignment_number, tests):
         return
 
     grades = {}
+    feedbacks = {}
 
     for repo in os.listdir(first_repo_folder):
         repo_path = os.path.join(first_repo_folder, repo)
         if os.path.isdir(repo_path):
             # TODO add it as an argument
             # Update this depending on the assignment name
-            student_name = print_after_nth_dash(repo, 1)
+            student_name = print_after_nth_dash(repo, 2)
             print(f"Grading {student_name}")
+
+            total_grade = 0
+            feedback = ""
+
             # TODO add it as an argument
             copy_template_to_repo(template_folder, repo_path)
             os.chdir(repo_path)
 
-            total_grade = 0
 
             # TODO add it as an argument
             # Uncomment to use the test present in the repo
             # tests = read_tests_from_json_file(".github/classroom/autograding.json")
             for test in tests:
-                total_grade += run_test(test)
+                test_grade, test_feedback = run_test(test)
+                total_grade += test_grade
+                feedback += test_feedback
+            
 
-            # TODO add it as an argument
             if total_grade != 0:
+                # TODO add it as an argument
                 workflow_passing = check_workflows_passing("QualityInUse", repo)
                 if not workflow_passing:
                     total_grade = 0
+                    feedback = "Workflow(s) not passing."
 
-            # TODO add automated feedback
+
             grades[student_name] = total_grade
-
-            print(f"Done grading {student_name}")
+            feedbacks[student_name] = feedback
             os.chdir("../../..")
 
-    save_grades_to_csv(grades, "output_grades.csv")
+        
+
+            print(f"Done grading {student_name}")
+            
+
+    save_grades_to_csv(grades, feedbacks, "output_grades.csv")
 
 
 if __name__ == "__main__":
