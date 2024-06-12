@@ -2,7 +2,7 @@
 
 ## Overview
 
-This project provides an automated grading system designed to streamline the process of evaluating student submissions for programming assignments. Utilizing Python, the system clones GitHub Classroom repositories, executes predefined tests against student submissions, and calculates grades based on the outcomes of these tests. Finally, it compiles and saves the grades into a CSV file for easy review and record-keeping.
+Github classroom's own grader is pretty bad and very limited and becomes expensive with scale since you need to run it on their runners. This grader, clones all the repos from an assignment and grades them locally on your machine with more customization.
 
 ## Features
 
