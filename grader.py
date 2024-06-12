@@ -29,7 +29,7 @@ def read_tests_from_json_file(file_path):
         tests = data.get("tests", [])
     return tests
 
-# TODO update what to include in the test feedback
+
 def run_test(test_dict):
     # Execute the setup command
     setup_commands = test_dict["setup"].split(";")
@@ -41,7 +41,7 @@ def run_test(test_dict):
             return 0, ""
         except subprocess.CalledProcessError:
             print("A setup command failed.")
-            return 0, f"Failed setup for test {test_dict["name"]}."
+            return 0, f"Failed setup for test {test_dict['name']}."
 
     # Execute the test command
     test_commands = test_dict["run"].split(";")
@@ -52,10 +52,10 @@ def run_test(test_dict):
             )
         except subprocess.TimeoutExpired:
             print("A test command timed out.")
-            return 0, f"Test {test_dict["name"]} timed out."
+            return 0, f"Test {test_dict['name']} timed out."
         except subprocess.CalledProcessError:
             print("A test command failed.")
-            return 0, f"Test {test_dict["name"]} failed."
+            return 0, f"Test {test_dict['name']} failed."
 
     # If all test commands pass without exceptions, return the number of points
     return test_dict["points"], ""
@@ -127,15 +127,16 @@ def check_workflows_passing(owner, repo):
         return False
 
 
-def main(assignment_number, tests):
+def main(assignment_number, tests, clone_repos, dashes, copy_template, use_repo_tests, check_workflows):
     new_folder = "cloned_repos"
     template_folder = "template"
     os.makedirs(new_folder, exist_ok=True)
 
-    clone_command = f"gh classroom clone student-repos -a {assignment_number}"
-    print("Cloning repos")
-    run_command(clone_command, cwd=new_folder)
-    print("Done cloning repos")
+    if clone_repos:
+        clone_command = f"gh classroom clone student-repos -a {assignment_number}"
+        print("Cloning repos")
+        run_command(clone_command, cwd=new_folder)
+        print("Done cloning repos")
 
     try:
         first_repo_folder = next(
@@ -153,57 +154,51 @@ def main(assignment_number, tests):
     for repo in os.listdir(first_repo_folder):
         repo_path = os.path.join(first_repo_folder, repo)
         if os.path.isdir(repo_path):
-            # TODO add it as an argument
-            # Update this depending on the assignment name
-            student_name = print_after_nth_dash(repo, 2)
+            student_name = print_after_nth_dash(repo, dashes)
             print(f"Grading {student_name}")
 
             total_grade = 0
             feedback = ""
 
-            # TODO add it as an argument
-            copy_template_to_repo(template_folder, repo_path)
+            if copy_template:
+                copy_template_to_repo(template_folder, repo_path)
             os.chdir(repo_path)
 
+            if use_repo_tests:
+                tests = read_tests_from_json_file(".github/classroom/autograding.json")
 
-            # TODO add it as an argument
-            # Uncomment to use the test present in the repo
-            # tests = read_tests_from_json_file(".github/classroom/autograding.json")
             for test in tests:
                 test_grade, test_feedback = run_test(test)
                 total_grade += test_grade
                 feedback += test_feedback
-            
 
-            if total_grade != 0:
-                # TODO add it as an argument
+            if check_workflows:
                 workflow_passing = check_workflows_passing("QualityInUse", repo)
                 if not workflow_passing:
                     total_grade = 0
                     feedback = "Workflow(s) not passing."
 
-
             grades[student_name] = total_grade
             feedbacks[student_name] = feedback
             os.chdir("../../..")
 
-        
-
             print(f"Done grading {student_name}")
-            
 
     save_grades_to_csv(grades, feedbacks, "output_grades.csv")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Clone GitHub Classroom repositories, run set of tests on them, caluclate grade for each student, save to csv."
+        description="Clone GitHub Classroom repositories, run set of tests on them, calculate grade for each student, save to csv."
     )
-    parser.add_argument(
-        "assignment_number", type=str, help="The assignment number for GitHub Classroom"
-    )
-
-    tests = read_tests_from_json_file("autograding.json")
+    parser.add_argument("assignment_number", type=str, help="The assignment number for GitHub Classroom")
+    parser.add_argument("--clone_repos", action="store_true", help="Whether to clone the classroom repos")
+    parser.add_argument("--dashes", type=int, default=2, help="Number of dashes to use when extracting student names")
+    parser.add_argument("--copy_template", action="store_true", help="Whether to copy the template files to each repo")
+    parser.add_argument("--use_repo_tests", action="store_true", help="Whether to use the tests from the autograding.json file inside the repo")
+    parser.add_argument("--check_workflows", action="store_true", help="Whether to base the grading on workflows passing")
 
     args = parser.parse_args()
-    main(args.assignment_number, tests)
+    tests = read_tests_from_json_file("autograding.json")
+
+    main(args.assignment_number, tests, args.clone_repos, args.dashes, args.copy_template, args.use_repo_tests, args.check_workflows)
